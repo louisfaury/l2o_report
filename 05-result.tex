@@ -1,0 +1,395 @@
+%\vspace{-10pt}
+
+\chapter{Experimental results}
+	\label{chap::results}
+	\section{Behavioral analysis}
+	{
+		
+		\paragraph{Angle predictor} The training of the angle predictor is straight forward and leads to robust angle prediction. Table \ref{tab::angle_result} shows the mean angle dissimilarity between the learnt angle predictor and the best teacher (as defined in \ref{sec::angle}) on a set of held-out functions from $\mathcal{F}_{train}$. We show this results when training and testing on either single modalities (e.g only quadratic, only valleys, ..) of $\mathcal{F}_{train}$, or all of them at the same time. We see that training the angle predictor on the whole meta-dataset does not impact its predictions abilities compared to landscape-specific training. Indeed, we only see a small drop in the quality of the predictions, which we attribute to the partial observability of the local landscapes (a valley seen under a small resolution can locally appear like a quadratic bowl, for instance). 
+			\begin{table}[h!]
+				\centering
+				\begin{tabular}{|c|c|c|c|c|}
+				\hline
+			 	\backslashbox{Training}{Testing} & Quadratics & Valleys & Saddles & Plateaus+cliffs\\
+				\hline
+				Quadratics & 1.2 &  89.2 & 43.1 & 34.8\\
+				Valleys & 83.5 & 4.9 & 94.1 & 86.9 \\
+				Saddles & 44.7 & 85.8 & 3.8 & 57.2 \\
+				Plateaus+cliffs & 29.4 & 94.3 & 53.9 & 1.9 \\
+				\hline 
+				\hline 
+				All & 3.1 & 6.4 & 5.1 & 3.8 \\
+				\hline
+				\end{tabular}
+				\caption{Mean angle dissimilarity in degrees on held-out functions from $\mathcal{F}_{train}$ when training on both single modalities and the whole meta-dataset.}
+				\label{tab::angle_result}
+			\end{table}
+		
+		\paragraph{Resolution and step-size predictor} Evaluating exhaustively the learnt policy for updating the resolution and the step-size is complicated. In Figure \ref{fig::policy_seq}, we display the dynamics of the step-size and the resolution chosen by the learnt policy, on instances of $\mathcal{F}_{train}$. For each figure, a landscape is randomly drawn for $\mathcal{F}_{train}$ and the initial state (i.e initial step-size, resolution and initial iterate) is sampled in the same distribution used at training time. Independently of the quality of this policy (which will be evaluated in the following sections), we can notice it follows our intuition of what is a good policy in this context: it zooms out  and increases the step-size in the beginning of the iteration procedure, while zooming in and reducing the step-size near the end when the local landscapes indicates the presence of a minimum nearby. 
+		
+		\begin{figure}[h!]
+			\centering
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[width=0.8\textwidth]{policy_seq_quad}
+				\caption{Quadratic}
+				\label{fig::policy_seq_quadratic}
+			}
+			\end{subfigure}
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[width=0.8\textwidth]{policy_seq_valleys}
+				\caption{Valley}
+				\label{fig::policy_seq_valley}
+			}
+			\end{subfigure}\\
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[width=0.8\textwidth]{policy_seq_saddle}
+				\caption{Saddle}
+				\label{fig::policy_seq_saddle}
+			}
+			\end{subfigure}
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[width=0.8\textwidth]{policy_seq_cliff}
+				\caption{Plateau+cliff}
+				\label{fig::policy_seq_cliff}
+			}
+			\end{subfigure}
+			\caption{Step-size and resolution trajectories for different instances of $\mathcal{F}_{train}$.}
+			\label{fig::policy_seq}
+		\end{figure}
+		
+		
+		This curves could suggest that the policy has only learnt good scheduling schemes for each of the modalities in $\mathcal{F}_{train}$. We show here that this is not the case, by showing that the policy is able to adapt to sharp changes of its initial state. In Figure \ref{fig::policy_seq_ad}, we sample this initial state far from the distribution that was used at training time (typically, a learning rate that is 100 times smaller that it usually is at training time, and a resolution 100 bigger), for a quadratic bowl. For reference, Figure \ref{fig::policy_seq_quad_ad} display the trajectory followed by the policy on the same landscape with a well set initial state. We can see that the schedule adapts to these changes, and therefore that mostly changes in the local landscape seen by the agent affects its decision (and not a fixed schedule learnt by the LSTM). 
+		
+		
+		\begin{figure}[h!]
+		\centering
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[width=0.8\linewidth]{policy_seq_quad_ad}
+				\caption{Step-size and resolution trajectory with well set initial state.}
+				\label{fig::policy_seq_ad}
+			}
+			\end{subfigure}
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[width=0.8\linewidth]{policy_seq_ad}
+				\caption{Step-size and resolution trajectory with poorly set initial state.}	
+				\label{fig::policy_seq_quad_ad}
+			}
+			\end{subfigure}
+			\caption[Some policy trajectories]{Comparing policy's trajectories on a quadratic bowl with different settings of the initial state.}
+		\end{figure}
+	}
+	\section{Two-dimensional experiments}
+	{
+		\subsection{Testing on $\mathcal{F}_{train}$}
+		We first want to evaluate the optimizer resulting from the model we introduced on $\mathcal{F}_{train}$ to evaluate its behavior on known landscapes. This already can be seen as some kind of meta-testing on some hold-out since we only sample in $\mathcal{F}_{train}$, which contain an infinite number of functions. Therefore, we can assume that whenever we sample in $\mathcal{F}_{train}$, we will obtain a function that the optimizer has not seen during training. 
+		
+%		\begin{figure}[h!]
+%			\begin{center}
+%				\includegraphics[width=0.8\linewidth]{full_test_Ftrain}
+%				\caption{Tests runs on instances of modalities of $\mathcal{F}_{train}$. From top left to bottom right: quadratic bowl, valley, (plateau+cliff),  saddle. The shades represents the envelope of the trajectories over an entire 20-fold. Best viewed in color.}
+%				\label{fig::ftrain_test}
+%			\end{center}
+%		\end{figure}
+		
+		\begin{figure}[h!]
+			\centering
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[width=0.9\textwidth]{best_quad}
+				\caption{Quadratic}
+				\label{fig::fquad_eval}
+			}
+			\end{subfigure}\hfill
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[width=0.9\textwidth]{best_valley}
+				\caption{Valley}
+				\label{fig::valley_eval}
+			}
+			\end{subfigure}\\
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[width=0.9\textwidth]{best_uni}
+				\caption{Plateau+cliff}
+				\label{fig::uni_eval}
+			}
+			\end{subfigure}\hfill
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[width=0.9\textwidth]{best_saddle}
+				\caption{Saddle}
+				\label{fig::saddle}
+			}
+			\end{subfigure}
+			\caption[Tests runs on instances of modalities of $\mathcal{F}_{train}$]{Tests runs on instances of modalities of $\mathcal{F}_{train}$. The shades represents the envelope of the trajectories over an entire 20-fold. Best viewed in color.}
+			\label{fig::ftrain_test}
+		\end{figure}
+		
+		We follow a simple procedure: we sample $f\in\mathcal{F}_{train}$, an initial point $\theta_0 \in \Omega_0$, and sample uniformly at random an initial step-size and an initial resolution inside the distribution used at meta-training time. We then add a small perturbation to the initial iterate and run an optimization trajectory with a fixed horizon. We repeat this procedure many times to evaluate the global sensitivity of our algorithm to the position of the first iterate. To compare its performance with a broad variety of optimizers, we decide to evaluate with the same procedure a collection of optimization algorithms that include: gradient descent, Nesterov accelerated gradient descent, Newton Descent, Covariance Matrix Adaptation Evolution Strategy (CMA-ES) and the Nelder-Mead method. The results are regrouped in Figure \ref{fig::ftrain_test}. The lines represent the mean trajectory of each optimizer, while the shaded areas represent the envelope of all its trajectories (that were generated from noisy versions of the initial iterate).  The results, shown here for a single function $f$ and iterate point $\theta_0$ are consistent in our experiments - that we have learnt to compete with a wide variety of hand-designed algorithms, and that our optimizer is fairly independent of the initial value set for $\alpha_0$ and $\delta_0$. The hyper-parameters of hand-designed methods are modified at each time to perform as well as possible on the whole modality of $\mathcal{F}_{train}$ we are testing on. This means that our learnt optimizer sometimes compete with unfairly good algorithms (like Newton descent on a quadratic loss, that hits the optimum after just one iteration). In some cases, the apparent lack of trajectory envelope is due to the fact that the perturbation on the initial point sometimes have to be reduced for visualisation purposes. We provide in Appendix \ref{sec::policy_viz} visualizations of the trajectories followed by our learnt optimizer. 
+		
+		\subsection{Testing on $\mathcal{F}_{test}$}
+		To evaluate the meta-generalization abilities of our learnt optimizer, we also evaluate it on a two-dimensional meta-testing dataset $\mathcal{F}_{test}$. We selected various two-dimensional optimization problems known to be challenging for general optimization methods. The complete list contains Rosenbrock, Ackley, Rastrigin, Maccornick, Beale and Styblinksi's function, for which the literal expressions and surface plots can be found in Appendix \ref{sec::ftest}. It is important to note that none of these landscapes were seen by the optimizer during its training. 
+		
+		For each of those functions, we select a starting point that constitute a challenge for all compared optimizers (also indicated on the surface plot in Appendix \ref{sec::ftest}). We then followed the previously described procedure, and set the hand-designed optimizers hyper-parameters to show good behavior for every small perturbation of the initial iterate. The results are displayed in Figure \ref{fig::styblinskis}, \ref{fig::beales}, \ref{fig::rosenbrocks}, \ref{fig::maccornicks}, \ref{fig::ackleys} and \ref{fig::rastrigins}, and remain consistent when changing the starting point for each of the meta-test function. Our learnt optimizer can generalize to new landscapes, even multimodal ones, and compete with a wide variety of optimizers. On these multimodal landscapes, CMA-ES and the Nelder-Mead method provide two strong baselines (only the mean trajectory appear for such functions for vizualisation purposes). On \ref{fig::ackley_eval}, they are the only two algorithms with our method that find the global optimum. However, in \ref{fig::rastrigin_eval}, only our method finds for every perturbation of the initial iterate the global minimum. Our optimizer starts by zooming out to get a better understanding of the landscape, leading it to quickly cover an area where lays the global minimum. We also provide single trajectories visualisation on contour plots (the blue square denoting the starting point, and the dark circle the position of the optimum).
+
+%		\begin{figure}[h!]
+%			\begin{center}
+%				\includegraphics[width=0.8\linewidth]{full_test_Ftest}
+%				\caption{Tests runs on instances of modalities of $\mathcal{F}_{test}$. From top left to bottom right: Styblinksi, Beale, Beale, Rosenbrock, Maccornick, Ackley, Rastrigin. The shades represents the envelope of the trajectories over an entire 20-fold. Best viewed in color.}
+%				\label{fig::ftest_test}
+%			\end{center}
+%		\end{figure}
+
+		\begin{figure}[h!]
+			\centering
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{best_styblinksi}
+				\caption{Function value trajectories}
+				\label{fig::styblinksi_eval}
+			}
+			\end{subfigure}
+			\hfill
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{fplot_styblinski}
+				\caption{Contour plot trajectory}
+				\label{fig::styblinksi_eval_traj}
+			}
+			\end{subfigure}
+		\caption[Tests runs on Styblinski's function]{Tests runs on Styblinski's function. \emph{(Left)} The shades represents the envelope of the trajectories over an entire 20-fold. \emph{(Right)} The blue square denotes the initial point and the black circle the minimum.}
+		\label{fig::styblinskis}
+		\end{figure}
+		
+			\begin{figure}[h!]
+			\centering
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{best_beale}
+				\caption{Function value trajectories}
+				\label{fig::beale_eval}
+			}
+			\end{subfigure}
+			\hfill
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{fplot_beale}
+				\caption{Contour plot trajectory}
+				\label{fig::beale_eval_traj}
+			}
+			\end{subfigure}
+		\caption[Tests runs on Beale's function]{Tests runs on Beale's function. \emph{(Left)} The shades represents the envelope of the trajectories over an entire 20-fold. \emph{(Right)} The blue square denotes the initial point and the black circle the minimum.}
+		\label{fig::beales}
+		\end{figure}
+		
+		\begin{figure}[h!]
+			\centering
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{best_rosenbrock}
+				\caption{Function value trajectories}
+				\label{fig::rosenbrock_eval}
+			}
+			\end{subfigure}
+			\hfill
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{fplot_rosenbrock}
+				\caption{Contour plot trajectory}
+				\label{fig::rosenbrock_eval_traj}
+			}
+			\end{subfigure}
+		\caption[Tests runs on Rosenbrock's function]{Tests run on Rosenbrock's function. \emph{(Left)} The shades represents the envelope of the trajectories over an entire 20-fold. \emph{(Right)} The blue square denotes the initial point and the black circle the minimum.}
+		\label{fig::rosenbrocks}
+		\end{figure}
+		
+		\begin{figure}[h!]
+			\centering
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{best_maccornick}
+				\caption{Function value trajectories}
+				\label{fig::maccornick_eval}
+			}
+			\end{subfigure}
+			\hfill
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{fplot_maccornick}
+				\caption{Contour plot trajectory}
+				\label{fig::maccornick_eval_traj}
+			}
+			\end{subfigure}
+		\caption[Tests runs on Maccornick's]{Tests runs on Maccornick's function. \emph{(Left)} The shades represents the envelope of the trajectories over an entire 20-fold. \emph{(Right)} The blue square denotes the initial point and the black circle the minimum.}
+		\label{fig::maccornicks}
+		\end{figure}
+		
+		\begin{figure}[h!]
+			\centering
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{best_ackley}
+				\caption{Function value trajectories}
+				\label{fig::ackley_eval}
+			}
+			\end{subfigure}
+			\hfill
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{fplot_ackley}
+				\caption{Contour plot trajectory}
+				\label{fig::ackley_eval_traj}
+			}
+			\end{subfigure}
+		\caption[Tests runs on Ackley's function]{Tests runs on Ackley's function. \emph{(Left)} The shades represents the envelope of the trajectories over an entire 20-fold. \emph{(Right)} The blue square denotes the initial point and the black circle the minimum.}
+		\label{fig::ackleys}
+		\end{figure}
+		
+		\begin{figure}[h!]
+			\centering
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{best_rastrigin}
+				\caption{Function value trajectories}
+				\label{fig::rastrigin_eval}
+			}
+			\end{subfigure}
+			\hfill
+			\begin{subfigure}[b]{0.45\linewidth}
+			{
+				\centering
+				\includegraphics[height=0.7\textwidth]{fplot_rastrigin}
+				\caption{Contour plot trajectory}
+				\label{fig::rastrigin_eval_traj}
+			}
+			\end{subfigure}
+		\caption[Tests runs on Rastrigin's function]{Tests runs on Rastrigin's function. \emph{(Left)} The shades represents the envelope of the trajectories over an entire 20-fold. \emph{(Right)} The blue square denotes the initial point and the black circle the minimum.}
+		\label{fig::rastrigins}
+		\end{figure}
+		
+	}
+	
+	%\vspace{-10pt}
+	
+	\section{High-dimensional experiments}
+	{
+		We now test the procedure described in Section \ref{sec::highd} for problem of dimensions $d>2$. We propose to do this by considering a linear classifier for a binary classification task, and a small neural network classifier. 
+		
+		\subsection{Linear binary classification}
+		{
+			We generate random binary classification tasks in dimension $d>2$, according to the framework described in \cite{guyon2003data}. We want to optimize over the cross-entropy loss induced by this dataset. We therefore sample an initial iterate $\theta_0$, an initial learning rate and an initial resolution for our optimizer, and launch an optimization run. We test against two fairly good optimizers for this task: tuned gradient descent and Newton descent. We use a fixed budget $k=10$ of dimensions we can sample at each iteration. The results for three different randomly generated dataset of different dimensions are presented in Figure \ref{fig::highd}. 
+		
+			The results presented here are consistent in our experiments - that is that our procedure competes with tuned optimizers that use respectively first and second order information. However, one major downside of our optimizer is clock-time performances - one optimization run in this simple set-up can take up to a minute for $d>50$, against a few seconds for gradient descent on the machine used for our experiments. Also, its performance is impacted by the under sampling that happens when the budget $k$ is strictly less than the dimension $d$. Increasing the budget $k$ improves the per-iteration performance but greatly impact the algorithm's clock-time (as the number of operations grows quadratically with $k$). In the following experiments, we propose sampling strategies for the pairs of dimensions used at every update that take advantage of the problem's structure to cope with this limitation.
+		
+%			\begin{figure}[h!]
+%				\begin{center}
+%					\includegraphics[width=1\linewidth]{highd_tests}
+%					\caption{Tests runs for cross entropy loss of randomly generated binary classifications tasks, with budget $k=10$ of pair dimensions samples per iterations. The dimensionality of the problems are in order, from left to right: d=10, 20 and 50. Best viewed in color.}
+%					\label{fig::highd}
+%				\end{center}
+%			\end{figure}
+			
+			\begin{figure}[h!]
+			\centering
+			\begin{subfigure}[b]{0.33\linewidth}
+			{
+				\centering
+				\includegraphics[width=\textwidth]{bc_10}
+				\caption{d=10}
+				\label{fig::bc_10}
+			}
+			\end{subfigure}\hfill
+			\begin{subfigure}[b]{0.33\linewidth}
+			{
+				\centering
+				\includegraphics[width=\textwidth]{bc_20}
+				\caption{d=20}
+				\label{fig::bc_20}
+			}
+			\end{subfigure}\hfill
+			\begin{subfigure}[b]{0.33\linewidth}
+			{
+				\centering
+				\includegraphics[width=\textwidth]{bc_50}
+				\caption{d=50}
+				\label{fig::bc_50}
+			}
+			\end{subfigure}
+			\caption[Test runs for cross entropy loss of randomly generated binary classifications]{Test runs for cross entropy loss of randomly generated binary classifications tasks of dimension $d$, with budget $k=10$ of pair samples per iterations. Best viewed in color.}
+			\label{fig::highd}
+		\end{figure}
+
+
+		}
+		
+		\subsection{Small neural network}
+		{
+			\label{sec::net_exp}
+			We now want to use Rover Descent for a more complicated task. We consider using a small neural network in order to solve the Iris dataset \cite{fisher1936use}, which consists of 150 instances of 4-dimensional inputs and their respectives labels (1,2, or 3). The neural network we use is a small neural network, with two hidden-layer of width 10 and a softmax output activation, alongside a cross-entropy loss. The dimension of its loss landscape is $d=193$. We compare our results with tuned gradient descent and Adam. 
+			
+			Figure \ref{fig::netk} show the results we obtained using the same sampling strategy as presented earlier (\emph{i.e} we sample uniformly at random $k$ dimensions for which we create all possible $k(k-1)/2$ pairs to create two-dimensional slices). It now appears that simply increasing $k$ is not enough to ensure good behavior. Because some dimensions are visited by the algorithm only late in the procedure, their corresponding learning rate is still equal to the initial one, which can lead to erratic behaviors close to local minimum. Also, increasing $k$ implies that for every dimension we sample, we increase the number of two-dimensional moves our algorithm receives. Unlike for the convex case of linear binary classification, it appears that taking their mean value is a poor strategy as it leads to a slight decrease in performance. 
+			
+			To improve those results, we decide to use a slightly different sampling strategy. For \emph{every} dimension, we are going to create pairs with $l$ other dimensions, sampled uniformly at random. The difference is that every dimension will be used at least once at every update. The number of pairs we create is now $l\times d$. Figure \ref{fig::netl} present the result obtained for different values of $l$ and proves the superiority of this approach over the previous one. 
+			
+			Finally, we decide to use the special structure of the neural network to improve our algorithm. We use the same sample strategy we just presented, except that now the $l$ dimensions needed for every dimensions are sampled within a pre-defined subset. More precisely, we want to leverage a block-diagonal structure of the Hessian of the neural network: for every dimension (which correspond to a weight or a bias of the neural network), we only create pairs with dimensions corresponding to a weight or bias belonging to the same layer. Figure \ref{fig::netlblock} present the results obtained, which again improves against the last one and compete with Adam on this task. Leveraging a block-diagonal approximation of the Hessian is not a new idea and was recently used to obtained state-of-the-art results on neural network optimization (\cite{martens2015optimizing},\cite{zhang2017block})
+			
+			\begin{figure}[h!]
+			\centering
+			\begin{subfigure}[b]{0.33\linewidth}
+			{
+				\centering
+				\includegraphics[width=\textwidth]{iris_k}
+				\caption{Pair sampling}
+				\label{fig::netk}
+			}
+			\end{subfigure}\hfill
+			\begin{subfigure}[b]{0.33\linewidth}
+			{
+				\centering
+				\includegraphics[width=\textwidth]{iris_l}
+				\caption{Per-dimension sampling}
+				\label{fig::netl}
+			}
+			\end{subfigure}\hfill
+			\begin{subfigure}[b]{0.33\linewidth}
+			{
+				\centering
+				\includegraphics[width=\textwidth]{iris_lblock}
+				\caption{Per-dimension block sampling}
+				\label{fig::netlblock}
+			}
+			\end{subfigure}
+			\caption[Test runs on a small neural network for Iris dataset]{Test runs on a small neural network for Iris dataset, with different sampling strategies for the two-dimensional slices. Best viewed in color.}
+			\label{fig::net_test}
+		\end{figure}
+
+		}
+	}
+

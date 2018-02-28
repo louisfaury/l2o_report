@@ -1,0 +1,147 @@
+\chapter[Rover Descent]{Proposed approach: Rover Descent}
+	{
+
+\section{Intuition}
+%	Hand-designed optimization algorithms, once well-tuned for a given problem, can already provide good baselines for providing optimization updates. However, they are susceptible to some degeneracies in the loss surface they are exploring (valley for gradient descent and many of its variants, saddle-point for curvature-based optimizer). Many efforts were recently put in overcoming these difficulties, or in trying to revise some older ideas in the optimization community to achieve efficient minimization of large-scale non-convex functions (a good example of this can be found in \cite{hazan2016graduated}). Deep-learning provides a good benchmarking environment for such problems and led to many innovations. We want to consider such strategies as teachers for our learning algorithm. As we noted before, it often happens that these well known optimizers each have a \emph{nemesis} landscape on which their improvement can be very slow or even inexistent. 
+	
+	In this paper, we propose framing the problem of learning to optimize as a problem of navigation on the partially observable error surface. The error surface is defined by the values of the loss function taken over the range of its inputs. In this framework, the optimizer is an agent that starting from the initial point, attempts to reach the lowest point on the surface with the smallest number of actions (where an action is a move to an arbitrary point on the landscape), while observing only a set of points sampled from the loss surface. Our goal is to learn the navigation policy that maps the current state of the agent to a move on the surface. 
+	
+	To this end, we decide to divide the architecture of our agent in three sequential modules: the normalized update direction predictor $\Delta$, that predicts the angle of the update, the learning rate predictor that predicts the magnitude of the update $\alpha$, and the resolution predictor, that predicts the scale $\delta$ of the observation set at the landing point. This choice is motivated by our intuition that these steps can be approached in a hierarchical way (first choose a direction, then a step size accordingly for instance) and therefore might involve different training methods and procedures. Furthermore, each of the modules can act as a correction factor on the other two modules. For example, if the update angle is not correct, the learning rate module can compensate by making the move very small and the resolution module can zoom out/in to make the next angle prediction task easier. Figure \ref{fig::archi} sums up the architecture we just devised in the two-dimensional case.
+	
+	%We decompose the update of our optimizer in three stages: choosing an appropriate normalized direction of update $\Delta$, choosing a step-size $\alpha$ to apply, and updating the resolution $\delta$  of the grid.
+			
+		%We now consider the naive setup where an optimization algorithm has access to several different optimizers, and has to decide which one to use at every step of the optimization procedure. If provided with a basic understanding of the landscape around the current iterate, it could dynamically switch between the different optimizers to pick the one it judges most adapted to the situation -  and therefore be robust to a wide variety of landscapes. For such a system to be efficient, and to avoid having to design and tune new basis optimizers for every new problem, it should also learn to mimic their moves - or directly the move of the optimizer it judges best given a representation of the local landscape. 
+		%This reasoning leads us to think that a meta-learner, that is trained on a predefined set of \emph{prototypical loss landscapes} that appear frequently in common optimization problems in order to select an appropriate teacher and mimic its move, could show robustness on a variety of surfaces, and generalize to complex problems that it has not seen during training. Its input should be expressive enough to classify efficiently the surroundings of the current iterate and to be able to reproduce the behavior of diverse optimizers. 
+	
+\section{The two-dimensional case}
+\label{sec::twod}
+In the following subsection, we consider the simple case $d=2$ to develop our experimental set-up. A generalization for higher dimensions can be found in Section \ref{sec::highd}. 
+		
+		\begin{figure}[h!]
+				\begin{center}
+					\includegraphics[width=0.7\linewidth]{archi}
+					\caption[Decomposition of the optimization step in three independent modules]{Decomposition of the optimization step in three independent modules: angle prediction, step-size prediction and resolution prediction.}
+					\label{fig::archi}
+				\end{center}
+			\end{figure}	
+			
+
+
+\subsection{Prototypical landscapes}}
+	
+	\paragraph{Prototypical landscapes} Because our end goal is to be able to optimize complex loss landscapes, we are interested in selecting a small but sufficiently large set of prototypical landscapes as our meta-training set $\mathcal{F}_{train}$. More precisely, we decide to target surface degeneracies that are common when learning the weights of deep neural networks. These namely include \emph{valleys}, \emph{plateaus}, but also \emph{cliffs} (\cite{bengio1994learning}) and \emph{saddles} (\cite{dauphin2014identifying}). We also consider it useful to add \emph{quadratic bowls} to that list, to provide simpler and saner landscapes. Figure \ref{fig::sample_from_metatrain} provides a visualisation of each of these landscapes as generated by our meta-training algorithm, for which details can be found in Appendix \ref{sec::landscape_detail}. Interestingly enough, all of these landscapes were listed in \cite{schaul2013unit}, which provides a collection of unit tests for optimization. In the line of this work, we estimate that learning a optimizer over such landscapes can result in a robust algorithm. Also, because it is frequent in real world applications to only have access to noisy samples of the function we wish to optimize, our framework should therefore provide noisy versions of the landscapes described hereinbefore. 
+     		
+\subsection{Input design}
+Let us consider two classical optimizers: gradient-descent and Newton descent (see \cite{nocedal2006numerical} for complete details). While gradient descend can escape non-strict saddle points but shows shattering behavior insides valleys (see Figure \ref{fig::nemesis}), second-order methods can leverage curvature to make quick progress inside valleys. However, saddles are attraction points for such methods. 
+	
+	To get the best of both worlds, we want our local descriptor to be able to represent both first and second order information. Finite difference provides an easy way to approximate them from zeroth order sample of a function. However, the precision of finite difference can  be severely impacted by noisy oracles, although this can be alleviated by a pre-filtering of the function samples (like low-pass filtering for removing white noise). 
+		\begin{figure}[h!]
+			\begin{center}
+				\includegraphics[width=0.7\linewidth]{nemesis_landscapes}
+				\caption[Nemesis landscapes]{\emph{Left}: gradient descent has a shattering behavior in narrow valleys. \emph{Right}: saddle points are attractors for Newton descent.}
+				\label{fig::nemesis}
+			\end{center}
+		\end{figure}
+			
+		Let $f$ the loss landscape we are optimizing, mapping $\Omega_f \subset \mathbb{R}^d$ into $\mathbb{R}$, and $\theta \in\Omega_f$. A natural way to describe the surroundings of $\theta$ is to sample a grid centered on $\theta$. Given a budget of $n^2$ samples and a resolution $\delta$, we note $s_\delta^n(f,\theta)$ the resulting two-dimensional grid.
+		\begin{equation}
+				s_\delta^n(f,\theta) \triangleq \left(f \left( \begin{pmatrix} \theta_1 \\ \theta_2 \end{pmatrix} - \delta\cdot\begin{pmatrix} i - n/2 \\ j-n/2\end{pmatrix}\right)\right)_{i,j\in \{1,\hdots,n\}^2}
+		\end{equation}
+		
+		This state representation has three advantages; it allows us to have a human-understandable input to our model, represent the surroundings of the current iterate and can approximate the inputs taken by gradient descent and Newton descend via finite difference. Another advantage is that pre-filtering can be efficiently applied by convolutions. For this state representation to represent compactly various functions, independent of their magnitude, we linearly rescale it to take its values in $[0,1]$.
+			
+		It is important to note that such an input becomes extremely expensive to compute as the dimensionality of the problem grows, as the size of $s_\delta^n(\cdot)$ grows exponentially with $d$. Therefore, we will use this solution for $d=2$, and discuss different ways of scaling to higher dimension in \ref{sec::highd}. 
+			
+		One could argue that using noisy zeroth order oracle for optimization is uncompetitive compared to higher order methods. Indeed, the study of convergence rates and lower bounds for convex optimization problem show the superiority of first-order oracles over single zeroth-order function evaluation (\cite{nemirovskii1983problem}). However, it was proven in \cite{duchi2015optimal} that by using two function evaluations, the oracle complexity of the latter type of algorithms could compete with the former, up to a low-order polynomial of the dimension factor (in the convex case). Because we use many of such samples, we are confident that we will be competitive against higher order oracles.
+			
+			\begin{figure}[h!]
+				\begin{center}
+					\includegraphics[width=0.9\linewidth]{ftrain_samples}
+					\caption[Instances of $\mathcal{F}_{train}$]{Instances of $\mathcal{F}_{train}$. In order: quadratic bowl, valley, (plateau+cliff), saddle. Best viewed in color. }
+					\label{fig::sample_from_metatrain}
+				\end{center}
+			\end{figure}
+	
+	%\vspace{-20pt}
+	
+	\subsection{Learning the update direction/angle}
+	\label{sec::angle}
+	The first step of our three-step optimizer is to determine a good direction of update, given a grid of samples $s_\delta^n(f,\theta)$. In light of the previous discussion, we decided to learn this angle prediction by \emph{imitation learning}, provided two teachers: gradient descent and Newton descent. The field of imitation learning is large, though dominated by two antagonist approaches: \emph{behavioral cloning} and \emph{inverse reinforcement learning}. The latter recovers the cost function that a teacher or expert is minimizing, while the former involves training a complex model (usually a deep neural network) in a supervised fashion so that it mimics a teacher. Thorough details on both these methods, as well as a complete survey of the field of imitation learning can be found in \cite{Billard2016}. Behavioral cloning, while being straight forward and simple to implement, is known to require a large amount of data and to be prone to \emph{compounding errors}, leading to divergence between the teacher's and the imitation followed paths. 
+		On the other side, inverse reinforcement learning allows the imitator to interact with the environment, and fit its behavior over whole trajectories (therefore is not affected by the compounding error issue). However, it often implies using reinforcement learning in a inner loop, making this technique rather costly to use.  In our set-up, we decided to use a behavioral cloning approach. We can indeed easily generate large amounts of training data, and are not trying to fit the entire teacher behavior but only a subpart - the direction, not the step-size.
+			
+	We collect our training data by launching optimization runs, where we follow the best out of the teachers (here best means leading to the largest decrease of the objective function). At each step, we record the local grid sample with a pre-determined resolution, as well as two opposite directions of update: the optimal one $d_*$ (given by the best teacher) and a set of opposite randomly generated ones $\tilde{d_*}$ (sampled to lie in the half-space defined by $\{ d\, \vert \, d^Td_* <0\}$). The expert move $d_*$ and its negative counterparts $\tilde{d}_*$ are normalized to create two actions $a_*= d_* / \lVert d_*\rVert_2$ and $\tilde{a}_*$ similarly. We then create two state-action pairs with respective label $t=1$ and $t=0$, corresponding to a positive and a negative sample. In practice, we sampled $5\cdot 10^4$ functions from $\mathcal{F}_{train}$ and let the optimization procedure run for $10$ steps on each functions, creating $10^6$ (state,action,label) tuples to train on, stored in $\mathcal{D}_{train}$.
+			
+	To fit the resulting (state-action) pairs, we design a simple neural network made of two convolutional layers followed by two fully connected layers. The idea of using convolutional layer is related to the problem of filtering we mentioned earlier, and to the idea that the learnt filters in the convolutional layer can act as identifiers for the different landscapes encountered during an optimization run. For a given grid of sample $s$, we denote $y(\omega,s)$ the output of this model, parametrized by the weights $\omega$ of the network. We use batch-normalization layers after the convolutional layers, and train the model to minimize the cross-entropy loss:
+			\begin{equation}
+				J(\mathcal{D}_{train},\omega) = \sum_{(s,a,t)\in\mathcal{D}_{train}} \Big[t\log{\{\sigma(y(\omega ,s),a)\}} + (1-t)\log{\{1-\sigma(y(\omega,s),a)\}}\Big]
+			\end{equation}
+			with $\sigma(y(s),a) = (1+e^{-y(\omega,s)^Ta})^{-1}$.
+			The objective is to learn to correlate the output of the model when the action $a$ has a positive label (it was sampled from the best teacher). The idea of storing negative versions of that optimal action can be understood as negative sampling, or noise contrasted estimation \cite{gutmann2010noise}. We found that this approach, over the other ones we tried, lead to better performances while greatly reducing overfitting. Because we only want to use this model as an angle predictor, we will use a normalized version of the output: $\Delta(s) = y(s) / \rVert y(s) \lVert_2$.
+	
+		\subsection{Learning the step-size and the resolution}
+		\label{sec::rl_reso}
+		
+		 At this point, we have learnt a good angle predictor. We now want to learn two new behaviors: the step-size to apply to the update, as well as the next resolution of the sample grid. Learning the step-size is obviously crucial for the optimization step. Learning the resolution is also extremely important: far from an optimum, we'd like to zoom-out to get a better understanding of the landscape. Close to an optimum, we expect an efficient system to zoom in to refine its estimation of the localization of the optimal point. Those two behaviors can't be learnt efficiently from a teacher (line-search is an unfairly good teacher for the step-size, and we simply don't have available a hand-designed teacher for the resolution).
+			
+		\paragraph{Deterministic Policy Search} Policy search is a family of algorithm that directly search in the policy space for $\pi^* = \argmax{\pi}{\bar{R}}$ - see \ref{sec::rlps}. To make this search tractable, $\pi$ is usually tied to some parametrized family. A popular algorithm to perform that search is the Deterministic Policy Gradient \cite{silver2014deterministic} (DPG) where we learn a deterministic parametrized policy $\pi_\eta(a\vert s) = \mu(\eta,s)$ in a fully observable Markov decision process ($\mathcal{O}=\mathcal{S}$). The system is composed of two entities, an actor and a critic. The critic, parametrized by $\omega$, has the role to evaluate the Q-values (expected return when taking an action $a$ in state $s$) of the current policy induced by the actor (parametrized by $\eta$). As it is common in actor-critic approaches, the critic is updated by batch of logged experience to minimize the squared temporal difference (TD) error $\left(r_t + \gamma Q_\omega(s_{t+1},a_{t+1}) - Q_\omega(s_t,a_t)\right)^2$. The actor's parameters are updated in the direction that maximizes the Q-values for a batch of logged states: $\Delta \eta \propto \nabla_a Q_\omega(s,a)^T \nabla_\eta \mu(\eta,s)$. \cite{lillicrap2015continuous} applied this algorithm to deep neural networks as function approximators, using techniques that were proven successful in deep Q-learning \cite{mnih2015human}, like target networks and experience replay. \cite{heess2015memory} also extended this approach for POMDP, where it is useful to use Recurrent Neural Networks as models for the policy.
+			
+		\paragraph{Reinforcement learning formulation} We consider the following environment for our problem. Let, for a given loss function $f$, the full state space $\mathcal{S}_f = \left\{ \theta, \alpha, \delta \right\}$ and the observations $\mathcal{O}_f = \left( s_\delta^n(f,x) \right)$. The agent hence only has access to the current grid of samples around $\theta$ with resolution $\delta$, but not to the current iterate position $\theta$, the current-step size $\alpha$ or the current resolution $\delta$. The idea behind this is to be able to generalize to unseen landscapes, and be robust to transformations such as rescaling or translations. The only events that should impact the agent's behavior is a sharp change in the neighboring landscape around the current iterate. The action space is set to be $\mathcal{A} = \{ \Delta \alpha , \Delta \delta \}\subseteq [-0.5,1]^2$ which constitutes the update rate of the step-size and the resolution. We consider deterministic transitions:
+			\begin{equation}
+				\begin{aligned}
+					&\theta_{t+1} = \theta_{t} + \alpha_t \Delta(s_{\delta_t}^n(f,\theta_t)) \\
+					&\alpha_{t+1} = \alpha_t(1+\Delta \alpha_t) \\
+					&\delta_{t+1} = \delta_t(1+\Delta\delta_t)
+				\end{aligned}
+				\label{eq::transitions}
+			\end{equation}
+			where the current iterate $\theta_t$ is updated along the direction $\Delta(s_{\delta_t}^n(f,\theta_t))$ with step-size $\alpha_t$. 
+			
+			We have several options for the reward function. One possibility is be to consider a budgeted optimization scheme, with reward $r(s) = -f(\theta_t) \mathds{1}_{t=T}$ (the reward is only given by the final value of the function at the last step). In this case, the reward is rather sparse, and leads the trajectory search in ambiguous ways. We can prefer another solution, where the whole trajectory of the agent over the landscapes is evaluated: $ r_f(s_t) = -f(\theta_t)$. 
+			This leads the policy search to optimize for the following return:
+			\begin{equation}
+				R_f = -\sum_{t=0}^T \gamma^t f(\theta_t)
+				\label{eq::reward}
+			\end{equation}	
+			Note that for $\gamma = 1$ this leads us to optimize over the same criterion that \cite{li2017learning} and \cite{andrychowicz2016learning} (in the former, the authors call this the meta-loss). 
+			
+		It is important to note that the previously described POMDP, that we will denote as $\mathcal{M}_f$, is parametrized by a function $f$ sampled inside $\mathcal{F}_{train}$. This induces a distribution $\mathcal{M}_{train}$ over POMDPs. In the following experiments, we won't make that distinction and train a single parametrized policy on the resulting POMDP distribution - that implies that every new episode is generated with $\mathcal{M}_f \sim \mathcal{M}_{train}$. This induces a difficulty over the learning task: both the transitions and the reward defined in \eqref{eq::transitions} and \eqref{eq::reward} change between every episode. To help the agent figure out optimal moves, we can change the reward so that it becomes insensitive to the magnitude of the sampled function $f$ and the position of the initial iterate $\theta_0$:
+			\begin{equation}
+				r_f(s_t) = -\frac{f(\theta_t) - f(\theta_f^*)}{f(\theta_0)-f(\theta_f^*)}
+			\end{equation}
+			with $\theta_f^* = \argmin{\theta}{f(\theta)}$. To also help the agent optimize over long trajectories where the magnitude of $f(\theta_0)$ largely surpasses $f(\theta_f^*)$, we propose a second version of the reward function:
+			\begin{equation}
+				r_f(s_t) = -\frac{f(\theta_t) - f(\theta_f^*)}{\bar{f}_k-f(\theta_f^*)}
+			\end{equation}
+			with $\bar{f}_k$ being the mean value of the objective function over the last $k$ iterates (we found that in our set-up, $k=5$ provides good results). The use of this reward function was a crucial element in the success of our reinforcement learning approach.
+			
+	We model the agent policy by a recurrent neural network, made up of two convolutional layers, followed by a LSTM cell, followed itself by two hidden layers. The critic is modeled by a similar network, and both were trained using the DPG algorithm. During training, we sample $f\sim\mathcal{F}_{train}$ at the beginning of each episode. The initial iterate is randomly sampled in the landscape so that it is far away enough from the optimum of the loss function. The episode is ran for a fixed horizon $T=30$ and we fix the discount factor $\gamma$ to 1. 
+	
+\section{Architecture for $d>2$}
+\label{sec::highd}
+
+	The idea of using grid samples $s_\delta^n(f,\theta)$ can't be exploited in high-dimensional problems as its size grows exponentially with $d$. To extend our framework for $d>2$, we consider the following set-up: let $f: \mathbb{R}^d \to \mathbb{R}$ and $\theta$ the initial iterate. We note $s(f,\theta,i,j)$ the vector that contains the two-dimensional grid sampled at $\theta$ along the dimensions $i$ and $j$. In other words, with $\delta_i$ the $d$-dimensional vector whose entries are all 0 but the ith one that is set to 1, and $E_{i,j} = (\delta_i,\delta_j)$ a $d\times2$ matrix, we note: $s_\delta^n(f,\theta,i,j) = s_\delta^n(f,E_{i,j}^T\theta)$.
+		
+		By considering all pairs of dimensions, we can compute $d(d-1)/2$ of such grids, leading to the prediction of as many angles $\Delta_{i,j}(f,\theta) = \Delta(s_\delta^n(f,\theta,i,j))$, step-size updates $\Delta \alpha_{i,j}$ and resolution updates $\Delta \delta_{i,j}$ - all predicted with the models trained in the two dimensional case. Therefore, if we keep record of all step-size and resolution for every pair of dimension $(i,j)$ we can compute $d(d-1)/2$ updates $\Delta \theta_{i,j} = \alpha_{i,j} \Delta_{i,j}(f,\theta)$. We can consider each of these outputs like the $d(d-1)/2$ two-dimensional projections of the true $d$-dimensional update $\Delta \theta$ so that $\Delta \theta_{i,j}= E_{i,j}^T \Delta \theta$. We can therefore try to retrieve $\Delta\theta$ by a least-square approach, and find $\Delta \hat{\theta}$:
+		
+		\begin{equation}
+			\Delta \hat{\theta}\triangleq \argmin{\delta \theta}{ \sum_{1\leq i < j \leq d} \left(E_{i,j}^T \delta\theta - \Delta\theta_{i,j}\right)^2}
+		\end{equation}
+		
+		Solving this equation leads to the analytical expression:
+		\begin{equation}
+			\begin{aligned}
+				\Delta \hat{\theta}
+							&= \frac{1}{d-1} \sum_{1\leq i < j \leq d} \alpha_{i,j} E_{i,j}\Delta_{i,j}(f,\theta)
+							%&= \frac{1}{d-1} \sum_{1\leq i < j \leq d}E_{i,j}\Delta\theta_{i,j}\\
+			\end{aligned}
+		\end{equation}
+		
+		Each pair of dimension has a corresponding step-size $\alpha_{i,j}$  and resolution $\delta_{i,j}$, which are updated by running the associated two-dimensional grid through the system described in \ref{sec::rl_reso}. This computation requires maintaining $d(d-1)/2$ learning rates and resolutions, and computing as many grid samples. Because of this quadratical growth with the dimension, this leads to clock-time and memory issues for large values of $d$. A simple way round this problem is to sample $k<d$ pairs of dimensions, compute $\Delta\hat{\theta}$ based only on these $k$ pairs and update their corresponding learning rates and resolutions. If we note $\Theta_k$ the set of $k$ pairs we sampled:
+		
+		\begin{equation}
+			\Delta \hat{\theta}_k =  \frac{1}{k-1} \sum_{(i,j)\in\Theta_k} \alpha_{i,j} E_{i,j}\Delta_{i,j}(f,\theta)
+			\label{eq::d_update}
+		\end{equation}
+		Different strategies can be employed to sample $\Theta_k$, possibly leveraging some knowledge about the optimization problem's structure. Such strategies are experimentally investigated in \ref{sec::net_exp}.
+				
+	}

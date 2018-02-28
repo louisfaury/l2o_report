@@ -1,0 +1,319 @@
+	\chapter{Preliminaries}
+	{
+		\label{chap::prel}
+		\section{Deep learning}
+		{
+			\subsection{Definitions}
+			\paragraph{} The aim of this section is not to give an exhaustive review of the very wide field of deep learning, but to refer the reader to useful pointers for models and techniques that would be used in this report. 
+			
+			\paragraph{} Deep-learning is not a recent idea (see \cite{wang2017origin} for a full historical review), but hardware development, advances in non-convex optimization and record-breaking performance in some applications (for instance in computer vision \cite{NIPS2012_4824}, speech recognition \cite{graves2013speech} and machine translation \cite{lecun1998gradient}) led it to become a largely adopted paradigm for machine learning practitioners as well as a wide and complex subject of research in machine learning. The key idea behind deep learning is to \emph{learn features} from data, by stacking layers of feed-forward predictors (see \cite{goodfellow2016} for complete and thorough details). More formally, a one hidden layer neural network produces an output $\mathbf{y}(\mathbf{x})\in\mathbb{R}^o$ given an input $\mathbf{x}\in\mathbb{R}^d$ such as:
+			\begin{equation}
+				\mathbf{y}(\mathbf{x}) = \sigma_o (V\sigma_h(W(\mathbf{x+b})+\mathbf{c})
+				\label{eq::nnmodel}
+			\end{equation}
+			where $W\in\mathbb{R}^{h\times d}$ and $V\in\mathbb{R}^{o\times h}$ model the weights of the network, and $\mathbf{b}\in\mathbb{R}^d$, $\mathbf{c}\in\mathbb{R}^h$ its biases. $\sigma_h$ is the activation function for the hidden layer - typically a sigmoid, hyperbolic tangent or rectified linear (ReLu, \cite{nair2010rectified}) function. $\sigma_o$ is the output layer's activation, and is usually designed to fit task attributed to the neural model (linear for regression, softmax for multi-class classification, ..). As usual in machine learning, this model is then fed to a loss (statistically motivated or not) $\mathcal{L}(\mathbf{x},W,V,\mathbf{b},\mathbf{c})$ evaluating the quality of the results output by the network. 
+			
+			Reproducing this architecture over an over, one can increase the depth of the network - which is largely done in practice. It has been observed that deep networks have remarkable generalization properties, despite their high number of free parameters. It is indeed important to realize that the model's free parameters live in high dimension - $h\times d + o\times h + h + d$ only for our toy example \eqref{eq::nnmodel}. Furthermore, the loss $\mathcal{L}$ is non-linear and non-convex in these parameters, making it hard to optimize with standard optimization tools. 
+			
+			Since the first deep learning architecture , a great number of other architectures have been proposed (for instance \cite{he2016deep}, \cite{sabour2017dynamic}), and covering all of is out of the scope of this report. We'll focus here on the architectures that will be hereinafter used. The statistical motivation and numerical training of deep neural architecture will be evoked in \ref{chap::related}.
+			
+			\subsection{Convolutional layers}
+			{
+				\paragraph{} The idea of convolutional layers inherits from classical work in image and signal processing, where initially, hand-designed filters were used as feature detector in images. From a machine learning point of view, such filters can be learned directly from data if provided the right architecture. By enforcing \emph{parameter sharing} in the model, the weights of a convolutional layers belonging to the same filter are tied together, which leads to learning image features detectors. Convolutional layers can be stacked, and a flattened version of their output can be fed to classical, fully-connected (or sparse) layers. Tricks like pooling (dropping activations or applying a max-operator) are often applied to provide local rotation and translation invariance to the learned detectors. Figure \ref{fig::conv} provides a representation of the action of a convolutional layer. 
+				
+				\begin{figure}[h!]
+					\begin{center}
+						\includegraphics[width=0.8\textwidth]{typical_cnn}
+						\caption{A typical convolutional architecture}
+						\label{fig::conv}	
+					\end{center}
+				\end{figure}	
+				
+			}
+			
+			\subsection{Recurrent cells}
+			{
+				\paragraph{} A large number of machine learning problems involve sequence-to-label, or sequence-to-sequence predictions. If dealing with sequence of varying length, classical architectures fall short. A common approach to this problem is to use recurrent neural networks \cite{funahashi1993approximation}. Those networks maintain internal hidden states, that can get updated via recurrent connections, and therefore that can be seen as the hidden state of a dynamical system. Figure \ref{fig::rnn} display the vanilla architecture for a RNN. This naive approach have a major shortcoming, which is the vanishing our exploding nature of the gradient flow \cite{bengio1994learning} - linked to its  difficulties with long term dependencies. Various number of architectures have been proposed to cope with this problem, such as the Long-Short-Term-Memory (LSTM) cell \cite{hochreiter1997long} or the  Gated Recurrent Unit (GRU) \cite{chung2014empirical}.
+				
+				The training of such a model needs to be adapted from the training of classical feed-forward model, usually by \emph{unfolding the computational graph}. 
+				
+				\begin{figure}[h!]
+					\begin{center}
+						\includegraphics[width=0.8\textwidth]{typical_rnn}
+						\caption{A typical recurrent architecture}
+						\label{fig::rnn}	
+					\end{center}
+				\end{figure}	
+			}
+		}
+		\section{Reinforcement learning}
+		{
+			\subsection{Formulation}
+			{
+							\subsubsection{Definitions}
+			{
+				\paragraph{} Reinforcement learning is a framework in which an \emph{agent} (or a \emph{learner}) learns its actions from interaction with its environment. The environment generates scalar values called \emph{rewards}, that the agent is seeking to maximize over time. 
+			
+				Let $\mathcal{S}$ denote the state space in which our agent evolves (the localization of a robot on a grid for instance), and $\forall{s}\in\mathcal{S}$ we will define the action state $\mathcal{A}(s)$, describing all possible action that can be taken by the agent at state $s$. When taking an action from a state $s_t$, the agent finds itself in a new state $s_{t+1}$ where it receives a reward $r_{t+1}\in\mathbb{R}$. The action taken is sampled over a probability distribution from the joint space of state and action: 
+				\begin{equation}
+					\begin{aligned}
+						\pi \,  : \, \mathcal{S}\times\mathcal{A}(s) \, &\to [0,1]\\
+							 (s,a) \, &\to \,  \pi(s,a)
+					\end{aligned}
+				\end{equation}	
+				where $\pi(s,a)$ is the probability of picking action $a$ in state $s$. Such a distribution is called the agent's \emph{policy}. The key goal of reinforcement learning is teaching an agent on how to change its policy to maximize its reward on the long run. 
+				The agent indeed seeks to maximize the \emph{expected return} $R_t$ mapping the reward sequence into $\mathbb{R}$. A commonly used expression for this value employs a \emph{discount factor} $\gamma \in [0,1]$, allowing to make the agent's more sensible to rewards it will get in a close future: 
+				\begin{equation}
+					R_t = \sum_{i=0}^T \gamma^i r_{t+1+i}
+				\end{equation}
+				This also allows to adapt this formulation to continuous tasks, where there are no terminal states and the task goes on indefinitely (there are no \emph{episodes} in the learning). 
+			}
+			\subsubsection{Markov Decision Process (MDP)}
+			{
+				\paragraph{} To make the problem tractable, we ask for the state signal to comply with Markov's property, hence to be \emph{memory-less}. For instance, we want to be able to write that, in a stochastic environment, $\forall s'\in\mathcal{S}$: 
+				\begin{equation}
+					\mathbb{P}\left( s_{t+1}=s' \, \vert \, a_t, s_t, \hdots, a_1,s_1\right) = \mathbb{P}\left( s_{t+1}=s' \, \vert \, s_t, a_t\right)
+				\end{equation}
+				
+				Hence, every reinforcement learning problem can be represented by a \emph{Markov Decision Process}, that consists in a 5-tuple $\left(\mathcal{S}, \mathcal{A}, \mathcal{P}_{\cdot}(\cdot,\cdot), \mathcal{R}_{\cdot}(\cdot), \gamma \right)$ where: 
+				\begin{itemize}[label=$\triangleright$]
+					\item $\mathcal{S}$ is the agent's state space
+					\item $\mathcal{A}$ is the agent's action space
+					\item $\forall s,s'\in\mathcal{S}, \, \forall a\in\mathcal{A}(s)$,  $\mathcal{P}_a(s,s') = \mathbb{P}(s_{t+1}=s'\, \vert \, s_t = s, a_t = a)$ is the probability that action $a$ in state $s$ will lead the agent to transitioning to state $s'$.
+					\item $\forall s,s'\in\mathcal{S}, \, \forall a\in\mathcal{A}(s)$,  $\mathcal{R}_a(s,s')$ is the immediate reward perceived by the agent when transitioning from state $s$ to $s'$ when taking action $a$. 
+					\item $\gamma$ is the discount factor. 
+				\end{itemize}
+				
+				A more realistic variant of MDP holds the name of \emph{Partially Observable Markov Decision Process} (POMDP), defined to be the tuple $\left(\mathcal{O},\mathcal{S},\mathcal{A},\mathcal{P},\mathcal{P}_o,\mathcal{R}\right)$ where $\mathcal{O}$ is the set of observations and $\mathcal{P}_o(o\vert s)$ the distribution of an observation conditionally to a state. The policy is now defined over observations $\pi(a\, \vert \, o)$ since the state is unaccessible to the agent (hence the name partially observable). 
+			}
+			\subsubsection{State and action value function}
+			{
+				\paragraph{} Most of the reinforcement learning algorithms are based on value function evaluation. A value function is a function mapping the state space in $\mathbb{R}$, estimating how good (in terms of expected future reward) it is for the agent to be in a given space. More precisely, a value function $V^\pi(\cdot)$ evaluates the expected return of a state when following the policy $\pi$. $V^\pi(\cdot)$ is called the \emph{state-value function}. 
+				\begin{equation}
+					\forall{s}\in\mathcal{S}, \quad V^\pi(s) = \E[\pi]{R_t \, \vert \, s_t = s}
+				\end{equation}
+				The \emph{action-value function} evaluates the value of taking a given action, and then following the policy $\pi$: 
+				\begin{equation}
+					\forall{s,a}\in\mathcal{S}\times\mathcal{A}(s), \quad Q^\pi(s,a) = \E[\pi]{ R_t \, \vert \, s_t=s, \, a_t=a}
+				\end{equation}
+				
+				\paragraph{} Both those functions satisfy particular recursive relationships known as the \emph{Bellman equations}. It is shown that (see \cite{sutton1998reinforcement}) we have the following results: 
+				\vspace{10pt}
+				
+				\coolbox{white}{\textcolor{black}{Bellman equations for Markov Decision Process}}
+				{
+					\begin{itemize}[label=$\triangleright$]
+						\item Bellman equation for the state-value function: $\forall s \in\mathcal{S}$ 
+						\begin{equation}
+							V^\pi(s) = \sum_{a\in\mathcal{A}}\pi(s,a)\sum_{s'} \mathcal{P}_a(s,s')\left[\mathcal{R}_a(s,s') + \gamma V^\pi(s')\right]
+						\end{equation}
+						\item Bellman equation for the action value function: $\forall{s,a}\in\mathcal{S}\times\mathcal{A}(s)$: 
+						\begin{equation}
+							Q^\pi(s,a) = \sum_{s'}\mathcal{P}_a(s,s')\left[ \mathcal{R}_a(s,s') + \gamma V^\pi(s')\right]
+						\end{equation}
+					\end{itemize}
+				}
+			}
+			\subsubsection{Optimal policies}
+			{
+				\paragraph{} The value functions define a partial ordering in the policy space. A policy $\pi$ is therefore said to be better than $\pi'$ (or $\pi\geq \pi'$) if $\forall{s}\in\mathcal{S}$, $V^\pi(s) \geq V^\pi(s')$. We are looking for $\pi^*$ so that: 
+				\begin{equation}
+					\forall\pi, \quad \pi^* \geq \pi 
+				\end{equation}
+				
+				It was showed that for finite MDPs, there is always at least one policy that is better our equal to all others, and therefore is called the \emph{optimal policy} $\pi^*$. As shown in \cite{sutton1998reinforcement}, the state-value and action-value function verify the \emph{Bellman optimality equations}. 
+				
+				\vspace{10pt}
+				
+								\coolbox{white}{\textcolor{black}{Bellman optimality equations}}
+				{
+					\begin{itemize}[label=$\triangleright$]
+						\item Bellman optimality equation for the state-value function: $\forall s \in\mathcal{S}$ 
+						\begin{equation}
+							V^\pi(s) = \max_{a\in\mathcal{A}(s)}\pi(s,a)\sum_{s'} \mathcal{P}_a(s,s')\left[\mathcal{R}_a(s,s') + \gamma V^\pi(s')\right]
+						\end{equation}
+						\item Bellman optimality equation for the action value function: $\forall{s,a}\in\mathcal{S}\times\mathcal{A}(s)$: 
+						\begin{equation}
+							Q^\pi(s,a) = \sum_{s'}\mathcal{P}_a(s,s')\left[ \mathcal{R}_a(s,s') + \max_{a\in\mathcal{A}(s')} Q(s',a') \right]
+						\end{equation}
+					\end{itemize}
+				}
+				\paragraph{} Those relations are essential in understanding the solving algorithms that will be presented later. 
+			}
+			}
+			
+			\paragraph{} There exists several ways of solving (i.e computing the optimal policy) a Markov Decision Process, that can generically be separated in two categories: \emph{model-based} and \emph{model-free} methods. 
+			
+			% TODO : I removed dynamic programing. Just say what it is, it is model based and therefore doesn't interest us here.
+		
+		\subsection{Temporal differences methods}
+		{
+			\paragraph{} Temporal difference methods can be seen as a combination of dynamic programing and another kind of learning called Monte Carlo methods, where the expected return are approximated via sampling. Like dynamic programming, TD methods are said to bootstrap (meaning that they build their estimators through already estimated values), but are \emph{model-free} methods and learn from experience. 
+			
+			\paragraph{} The justification, proof of convergences and literature and those models is pretty wide, hence we will not cover them in this report. However, a full description of those methods can be found in \cite{sutton1998reinforcement}. 
+			
+			\subsubsection{On-policy method: SARSA}
+			{
+				\paragraph{} The SARSA algorithm is an \emph{on-policy} control method, meaning that the algorithm updates the value function and improves the current policy it is following. At state $s_t$, it chooses an action $a_t$ from its policy and follows it. After observing the reward $r_{t+1}$ and the next state $s_{t+1}$, it again chooses an action $a_{t+1}$ using a soft policy and performs a one-step backup: 
+				\begin{equation}
+					Q(s_t,a_t) \leftarrow Q(s_t,a_t) + \alpha\left[r_{t+1} + \gamma Q(s_{t+1},a_{t+1}) - Q(s_t,a_t)\right]
+				\end{equation}
+				It therefore relies on a 5-tuple $(s_t,a_t,r_{t+1},s_{t+1},a_{t+1})$ to perform the udpate, giving it the State Action Reward State Action (SARSA) name. 
+				
+				The convergence properties of SARSA depend on the nature of the policy's dependency on Q. Indeed, SARSA converges with probability 1 to the optimal policy as long as all the sate and actions pairs are visited an infinite number of time, and the policy converges in the limit to the greedy policy. This is done, for instance, by turning the temperate of a softmax based policy to 0, or by having $\eps\to 0$ for a $\eps$-greedy policy. For SARSA to converge, we also as the learning rate to comply with the stochastic approximation conditions: 
+					\begin{equation}
+						\sum_k \alpha_k(a) = +\infty \quad { and } \quad \sum_k \alpha_k(a)^2 < +\infty
+					\end{equation}
+					where $\alpha_k(a)$ is the learning rate for the k\textsuperscript{th} visit of the pair $(s,a)$. 
+					
+			}
+			\subsubsection{Off-policy method: Q-learning}
+			{
+				\paragraph{} The Q-learning algorithm is an off-policy method who learns to directly approximate $Q^*$, independently of the policy being followed. Its update rule is given by:
+				\begin{equation}
+					Q(s_t,a_t) \leftarrow Q(s_t,a_t) + \alpha \left[ r_{t+1} + \gamma \max_{a\in\mathcal{A}(s_{t+1})} Q(s_{t+1},a) - Q(s_t,a_t)\right]
+				\end{equation}
+				The actual policy being followed still has an effect in that it determines which state-actions pairs are visited and updated. However all that is required for convergence it that all pairs continue to be updated. 
+				
+				Along with this hypothesis and a slight variation in the usual stochastic approximation conditions, the learned action value function by Q-learning has been shown to converge to $Q^*$ with probability $1$. 
+				
+				In some cases, off-learning policies algorithms (like Q-learning) and on-policy ones (like SARSA) can learn different optimal policies (see \cite{sutton1998reinforcement}). This is mainly due to the fact that Q-learning performs update like if it was following a greedy policy - which it is not. That leads it to be less sensitive to a possible behavioral policy failure. 
+			}
+}
+			
+			\subsection{Policy search}
+			{
+				\label{sec::rlps}
+				\subsubsection{Intuition}
+				{
+			\paragraph{} With continuous policy iteration, we approximated values functions:
+			\begin{equation}
+			\left\{
+				\begin{aligned}
+					&V_\theta(s) \simeq V^\pi(s) \\
+					&Q_\theta(s,a) \simeq Q^\pi(s,a)
+				\end{aligned}\right.
+			\end{equation}
+			and derived a policy (e.g $\eps$-greedy) from those approximations. With policy search, we now parametrize directly the policy:
+			\begin{equation}
+				\pi_\theta (s,a) = \mathbb{P}_{\pi_\theta}(a\vert s,\theta)
+			\end{equation}
+			
+			\paragraph{} They are a few advantages to this approach, such as: better convergence properties, easier to tract in high-dimensional and continuous spaces, ability to learn stochastic policies (which is especially useful in POMDPs, where the optimal policy might be stochastic), $\hdots$ but also some disadvantages (presence of many local minima, high-variance and difficulty of policy evaluation,..)
+				}
+				\subsubsection{Objective functions}
+				{
+				\paragraph{} Given $\pi_\theta(s,a)$, what's the best $\theta$ ? We need a scalar evaluation of the parametrized policy. In episodic MPDs, we can use the start value as such a metric:
+				\begin{equation}
+					\begin{aligned}
+						J_1(\theta) &= V^{\pi_\theta}(s_1)\\
+								  &= \mathbb{E}_{\pi_\theta}(v_1)
+					\end{aligned}
+				\end{equation}
+				
+				In continuous MDPs, we can use the average value: 
+				\begin{equation}
+					J_{av}(\theta) = \sum_s d^{\pi_\theta}(s) V^{\pi_{\theta}}(s)
+				\end{equation}
+				with $d^{\pi_\theta}(s)$ is the expected number of time $t$ on which $s_t=s$ in a randomly generated episode - or equivalently a stationary distribution of the Markov chain induced by $\pi_\theta$ in the environment. 
+				One can also use the \emph{average-reward} per time-step:
+				\begin{equation}
+					J_R(\theta) = \sum_s d^{\pi_\theta}(s) \sum_{a} \pi_\theta(s,a) \mathcal{R}_s^a
+				\end{equation}
+				}
+				
+				\subsubsection{Policy optimization}
+				{
+				\paragraph{} There are many ways to optimize those objective functions over $\theta$ - the more efficient being gradient-based methods. 
+				Like any gradient-based method, our parameter update will take the form of: 
+				\begin{equation}
+					\Delta \theta \propto \grad[\theta]{J}(\theta)
+				\end{equation}
+				The real question here is how to properly evaluate $\grad[\theta]J(\theta)$. 
+				
+				
+				We hereinafter derive an analytical solution for computing the policy gradient. We assume $\pi_\theta$ to be differentiable whenever it is non-zero, and that $\grad[\theta]\pi_\theta(s,a)$ is computable. We are also going to use the \emph{likelihood-ratio} trick: 
+					\begin{equation}
+						\grad[\theta]{\pi_\theta}(s,a) = \pi_\theta(s,a) \grad[\theta]{\log{\pi_\theta(s,a)}}
+					\end{equation}
+					If we consider one-steps MDPs, starting in state distributed along $d(s)$, terminating after receiving the one-step reward $r=\mathcal{R}_{s,a}$. Then: 
+					\begin{equation}
+						\begin{aligned}
+							J(\theta) &= \E[\pi_\theta]{r}
+								      &= \sum_{s\in\mathcal{S}} d(s) \sum_{a\in\mathcal{A}}  \pi_\theta(s,a) \mathcal{R}_{s,a} 
+						\end{aligned}
+					\end{equation}
+					and then:
+					\begin{equation}
+						\begin{aligned}
+							\grad[\theta]J(\theta) &= \sum_{s\in\mathcal{S}} d(s) \sum_{a\in\mathcal{A}} \pi_\theta(s,a) \grad[\theta]{\log{\pi_\theta(s,a)}}\mathcal{R}_{s,a}\\
+											&= \E[\pi_\theta]{\grad[\theta]{\log{\pi_\theta(s,a)}}r}
+						\end{aligned}
+					\end{equation}
+				
+				The policy-gradient theorem \cite{sutton2000policy} allows this generalization by replacing $r$ with the long-term value $Q^{\pi_\theta}(s,a)$. The REINFORCE algorithm \cite{williams1992simple} is one kind of Monte-Carlo Policy-Gradient methods, in which we use the return $v_t$ as an unbiased sample of $Q^{\pi_\theta}(s_t,a_t)$. The update therefore writes:
+					\begin{equation}
+						\Delta\theta_t = \alpha \grad[\theta]\log{\pi_{\theta}(s_t,a_t)}v_t
+					\end{equation}
+
+
+				\paragraph{Actor-Critic Policy Gradient} Monte-Carlo Policy-Gradient has a very high variance because of the way we approximate the expected return. We might want to use a critic to estimate the action-value function:
+					\begin{equation}
+						Q_w(s,a) \simeq Q^{\pi_\theta}(s,a)
+					\end{equation}
+					We maintain two sets of parameters:
+					\begin{equation}
+						\left\{\begin{aligned}
+						&\text{Critic: } \, \text{Action-value function parametrized by } w\\
+						&\text{Actor: }\, \text{Policy parameter } \theta
+						\end{aligned}\right.
+					\end{equation}
+					and we follow an approximate policy-gradient:
+					\begin{equation}
+						\Delta \theta = \alpha \grad[\theta]{\log\pi_\theta(s,a) Q_w(s,a)}
+					\end{equation}
+					The critic is solving this time the problem of policy evaluation. This can be done through MC policy evaluation, TD(0), TD($\lambda$). 
+
+
+				\paragraph{Variance reduction} For any function $b(s)$, the expectation of the score function times $b$ is zero. Indeed:
+					\begin{equation}
+						\begin{aligned}
+							\E[\theta]{\grad[\theta]{\log\pi_\theta(s,a)b(s)}} &= \sum_{s\in\mathcal{S}} d^\pi(s) \sum_{a\in\mathcal{A}} \grad[\theta]{\pi_\theta(s,a)b(s)} \\
+							&= \sum_{s\in\mathcal{S}} d^\pi(s) b(s) \grad[\theta]{\sum_{a\in\mathcal{A}} \pi_\theta(s,a)}\\
+							&= \sum_{s\in\mathcal{S}} d^\pi(s) b(s) \grad[\theta]{1}\\
+							&= 0
+						\end{aligned}
+					\end{equation}
+					We can therefore, without changing the expectation, reduce the variance by adding a baseline. We can henceforth derive, for every method, an optimal baseline. With actor-critic methods, a good baseline is the state-value function:
+					\begin{equation}
+						b(s) = V^{\pi_\theta}(s) 
+					\end{equation}
+					We can therefore rewrite the policy gradient using the advantage function $A^{\pi_\theta}(s,a) = Q^{\pi_\theta}(s,a) - V^{\pi_\theta}(s)$ and therefore:
+					\begin{equation}
+						\grad[\theta]{J(\theta)} = \E[\pi_\theta]{\grad[\theta]\log\pi_{\theta}(s,a) A^{\pi_\theta}(s,a)}
+					\end{equation}
+					This trick greatly reduces the variance of the policy gradient. Practically, we can use two function approximators and two parameter vectors: 
+					\begin{equation}
+						\left\{
+						\begin{aligned}
+							&V_v(s) \simeq V^{\pi_\theta}(s) \\
+							&Q_w(s,a)  \simeq Q^{\pi_\theta}(s,a) \\
+							&A(s,a) = Q_w(s,a) - V_v(s)
+						\end{aligned}
+						\right.
+					\end{equation}
+					Actually, for the true value function, the TD error $\delta^{\pi_\theta}$ is an unbiased estimator of the advantage function:
+					\begin{equation}
+						\begin{aligned}
+							\E[\pi_\theta]{\delta^{\pi_\theta}\vert s,a} &= \E[\pi_\theta]{r + \gamma V^{\pi_\theta}(s') - V^{\pi_\theta}(s)\vert s,a}\\
+							&= Q^{\pi_\theta}(s,a) - V^{\pi_\theta}(s) \\
+							&= A^{\pi_\theta}(s,a)
+						\end{aligned}
+					\end{equation}
+					Therefore it can be easily used directly (or through a proxy) to update the policy, which requires maintaining only one set of parameters. 
+					
+					}
+				}
+			}
+
+					

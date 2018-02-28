@@ -1,0 +1,17 @@
+	\chapter{Future work}
+	{
+		\label{chap::future}
+		
+		\paragraph{} In a close future, we wish to work on making our algorithm scale, in order to test it on more complex model, such as the loss of deep neural networks. This might involve devising smarter, adaptative dimension sampling strategies. 
+		
+		We also wish to investigate three axis of research that we judge crucial: 
+		\begin{itemize}
+			\item it appears that the choice of the meta-dataset is essential to the meta-generalization abilities of the meta-learner. Answering questions about a sufficient meta-dataset for a given optimization task would be a first step. To achieve this goal, we can imagine performing ablation studies on the meta-dataset to scan for the features an optimizer would need to master the optimization of a complex, high-dimensional landscapes. Another possibility would be to set-up an adversarial setting to generate functions in the meta-dataset on which the current iteration of the meta-learner will perform poorly. 
+			
+			\item investigating the training method to optimize the meta-trainer itself also seems worthy of efforts. We namely want to investigate the links between meta-learning, hyper-parameter optimization and Bayesian reinforcement learning (see \cite{ghavamzadeh2015bayesian} for references). Indeed, we believe that a general framework for learning to optimize can be inspired by different fields. The crucial point is that, contrary to classical reinforcement learning or optimization problems, we wish to learn a good behaviors (mean or worst-case) over classes of problems and environments. 
+			
+			\item we also wish to study the links between the architecture of a meta-trainer and a given oracle. We indeed believe that particular structure (attention models, ..) could leverage crucial knowledge and learn efficient representation skills about a local landscape. For instance, building a graph-like structure over actively sampled function evaluations could help a meta-learner understand extremely complex landscapes and explore them more efficiently. 
+		\end{itemize}
+
+		
+	}

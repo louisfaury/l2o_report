@@ -1,0 +1,69 @@
+%!TEX encoding = IsoLatin
+
+%% Document is article 
+\documentclass[a4paper]{report}
+
+%% ----------------------------------------------------- PACKAGES ----------------------------------------------------- %%
+\usepackage{coolReport}
+\usepackage{tabularx}
+\usepackage{breakcites}
+\usepackage{subcaption}
+\usepackage{slashbox}
+
+\graphicspath{{./img/}}
+\cRTitle{Master Project Report}
+
+
+\newcommand\blankpage{%
+    \null
+    \thispagestyle{empty}%
+    \addtocounter{page}{-1}%
+    \newpage}
+    
+%% ---------------------------------------------------------TITLE --------------------------------------------------------- %%
+
+%% ---------------------------------------------------- DOCUMENT ---------------------------------------------------- %%
+
+\begin{document}
+	\include{./title/title}
+	
+	\abstract
+	{
+		Learning to optimize - the idea that we can learn from data algorithms that optimize a numerical criterion - has recently been at the heart of a growing number of research efforts. It is mostly motivated by two observations: first, most optimization methods used by machine learning practitioners are built on top of human understanding of high-dimensional loss-landscapes, for which human intuition are limited. Also, optimization constitutes today a major bottleneck for the deployment of machine learning methods, namely because of the need for hyper-parameter tuning. If learning to optimize over one problem instance is relatively easy, a major challenge of this approach is that we want to learn a policy that is able to optimize over classes of functions that are different from the classes that the policy was trained on.
+		\\
+		
+		Machine learning is at the core of the technology developed by Criteo. The complexification of the models used in production require that engineers spend more and more time tuning their models beforehand. The development of a general-use, hyper-parameter-free optimizer is therefore of great interest for Criteo. The following report present the work I have completed on this subject while interning in the Deep Learning research team in Criteo's Paris offices, under the supervision of Flavian Vasile. 
+		\\
+		
+		We propose a novel way of framing learning to optimize as a problem of learning a good navigation policy on a partially observable loss surface. To this end, we develop Rover Descent, a solution that allows us to learn a broad optimization policy from training only on a small set of prototypical two-dimensional surfaces that encompasses classically hard cases such as valleys, plateaus, cliffs and saddles and by using strictly zeroth-order information. We show that, without having access to gradient or curvature information, we achieve fast convergence on optimization problems not presented at training time, such as the Rosenbrock function and other two dimensional hard functions. We extend our framework to optimize over high dimensional functions and show good preliminary results.
+	} 
+		
+	\tableofcontents
+	
+	\newpage
+	\begingroup
+	\let\clearpage\relax
+		\listoffigures
+	\endgroup
+
+	\input{01-intro}
+		
+	\input{02-preliminaries}
+	
+	\input{03-related}
+	
+	\input{04-approach}
+	
+	\input{05-result}
+	
+	\input{06-future}
+	
+	\input{02-conclu}
+	
+	\bibliographystyle{apalike}
+ 	 \bibliography{reportbib}
+	 
+	 \input{06-appendix}
+
+	
+\end{document}
